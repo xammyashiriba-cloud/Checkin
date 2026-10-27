@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Check-in">
+<meta name="theme-color" content="#17212B">
+<title>Check-in</title>
+<link rel="apple-touch-icon" id="touchIcon" href="">
+<style>
+:root{--ink:#17212B;--bg:#ECEEF1;--card:#fff;--line:#D3D8DE;--mute:#5A6572;--sb:env(safe-area-inset-bottom);--st:env(safe-area-inset-top)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font:16px/1.4 "Avenir Next",Avenir,"Segoe UI",system-ui,sans-serif;-webkit-text-size-adjust:100%}
+.hidden{display:none!important}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid #2F6FED;outline-offset:2px}
+.btn{display:block;width:100%;background:var(--ink);color:#fff;border:0;border-radius:10px;padding:14px 16px;font-weight:700}
+.btn.alt{background:#fff;color:var(--ink);border:1.5px solid var(--ink)}
+.btn.danger{background:#fff;color:#9B1C1C;border:1.5px solid #9B1C1C}
+.btn:disabled{opacity:.5}
+.stack>*+*{margin-top:10px}
+input,select,textarea{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:12px;background:#fff}
+label{display:block;font-weight:600;margin:12px 0 6px}
+
+/* login */
+.login{min-height:100dvh;display:flex;flex-direction:column;justify-content:center;padding:24px;max-width:420px;margin:0 auto}
+.login h1{font-size:34px;line-height:1.1;margin:0 0 6px;letter-spacing:-.5px}
+.login p{margin:0 0 18px;color:var(--mute)}
+.bands{display:flex;gap:6px;margin-bottom:22px}
+.bands i{display:block;height:14px;flex:1;border-radius:7px}
+.err{color:#9B1C1C;font-weight:600;margin-top:10px;min-height:1.4em}
+
+/* app shell */
+#app{display:flex;flex-direction:column;height:100dvh}
+header{background:var(--ink);color:#fff;padding:calc(var(--st) + 10px) 14px 10px;display:flex;gap:10px;align-items:center}
+header select{flex:1;background:#243241;border:0;color:#fff;font-weight:700;padding:10px 12px}
+header button{background:none;border:1.5px solid #5B6B7C;color:#fff;border-radius:10px;padding:9px 12px;font-weight:600}
+main{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
+nav{display:flex;background:#fff;border-top:1px solid var(--line);padding-bottom:var(--sb)}
+nav button{flex:1;background:none;border:0;padding:14px 0 12px;font-weight:700;color:var(--mute);border-top:4px solid transparent}
+nav button.on{color:var(--ink);border-top-color:var(--ink)}
+.view{padding:0 0 24px}
+.pad{padding:14px}
+
+/* scan */
+.cam{position:relative;background:#000;height:58dvh;overflow:hidden}
+.cam video{width:100%;height:100%;object-fit:cover}
+.frame{position:absolute;left:50%;top:50%;width:64%;aspect-ratio:1;transform:translate(-50%,-50%);border:3px solid #fff;border-radius:20px;box-shadow:0 0 0 999px rgba(0,0,0,.38)}
+.cammsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;padding:30px;font-weight:600}
+.tally{padding:16px 16px 6px;display:flex;align-items:baseline;gap:10px}
+.tally b{font-size:52px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+.tally span{color:var(--mute);font-weight:600}
+.hint{padding:0 16px;color:var(--mute)}
+
+/* result overlay */
+.result{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;justify-content:center;padding:28px;text-align:left}
+.result .kicker{font-size:20px;font-weight:700;opacity:.9}
+.result .who{font-size:clamp(40px,13vw,76px);line-height:1.02;font-weight:800;letter-spacing:-1.5px;margin:10px 0 18px;word-break:break-word}
+.result .seat{font-size:clamp(30px,9vw,52px);font-weight:800}
+.result .meal{display:inline-block;margin-top:16px;padding:10px 16px;border-radius:999px;font-weight:700;font-size:20px;border:3px solid currentColor}
+.result .next{position:absolute;left:0;right:0;bottom:calc(var(--sb) + 22px);text-align:center;font-weight:600;opacity:.8}
+.result.dark{background:var(--ink);color:#fff}
+.result.dup{background:repeating-linear-gradient(-45deg,#17212B 0 22px,#222E3B 22px 44px);color:#fff}
+
+/* guests */
+.tools{display:flex;gap:8px;padding:12px 14px 6px;position:sticky;top:0;background:var(--bg);z-index:5}
+.tools input{flex:1}
+.tools .btn{width:auto;white-space:nowrap}
+.chips{display:flex;gap:8px;padding:6px 14px 10px}
+.chips button{flex:1;border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:8px 0;font-weight:700;color:var(--mute)}
+.chips button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:#fff;border:0;border-bottom:1px solid var(--line);padding:12px 14px}
+.sw{width:14px;align-self:stretch;border-radius:4px;flex:none;min-height:38px}
+.who{flex:1;min-width:0}
+.who b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.who small{color:var(--mute)}
+.st{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.st.wait{color:var(--mute);font-weight:600}
+.empty{padding:30px 16px;color:var(--mute);text-align:center}
+
+/* count */
+.big{padding:18px 16px 8px}
+.big b{font-size:84px;line-height:.95;letter-spacing:-3px;font-variant-numeric:tabular-nums}
+.big span{display:block;color:var(--mute);font-weight:600;margin-top:4px}
+.track{height:12px;background:#D9DDE3;border-radius:6px;overflow:hidden;margin:12px 16px 0}
+.track i{display:block;height:100%;background:var(--ink)}
+h2{font-size:18px;margin:22px 16px 8px}
+.grp{display:flex;align-items:center;gap:12px;padding:10px 16px;background:#fff;border-bottom:1px solid var(--line)}
+.grp .sw{min-height:0;height:30px;width:30px;align-self:center;border-radius:8px}
+.grp .nm{flex:1;min-width:0}
+.grp .mini{height:6px;background:#E3E6EA;border-radius:3px;margin-top:6px;overflow:hidden}
+.grp .mini i{display:block;height:100%}
+.grp .num{font-weight:700;font-variant-numeric:tabular-nums}
+
+/* sheet */
+.sheet{position:fixed;inset:0;z-index:40;background:rgba(10,16,22,.55);display:flex;align-items:flex-end}
+.sheetbody{background:var(--bg);width:100%;max-height:92dvh;overflow:auto;border-radius:20px 20px 0 0;padding:18px 16px calc(var(--sb) + 18px)}
+.sheetbody h3{margin:0 0 4px;font-size:24px;letter-spacing:-.4px}
+.qrwrap{background:#fff;border-radius:14px;padding:12px;margin:14px 0;text-align:center}
+.qrwrap canvas,.qrwrap img{max-width:100%;height:auto}
+.band{height:14px;border-radius:7px;margin:10px 0}
+.meta{color:var(--mute);margin:0}
+#toast{position:fixed;left:50%;bottom:calc(var(--sb) + 80px);transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 18px;border-radius:12px;font-weight:600;z-index:90;max-width:88%;text-align:center}
+@media (prefers-reduced-motion:no-preference){.sheetbody{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:.6}}}
+</style>
+</head>
+<body>
+
+<div id="login" class="login hidden">
+  <div class="bands"><i style="background:#D62828"></i><i style="background:#1D5FD1"></i><i style="background:#1E9E4A"></i><i style="background:#F2B705"></i></div>
+  <h1>Event check-in</h1>
+  <p>Sign in with the staff login.</p>
+  <form id="loginForm" autocomplete="on">
+    <label for="email">Email</label>
+    <input id="email" type="email" autocomplete="username" required>
+    <label for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="current-password" required>
+    <div class="err" id="loginErr"></div>
+    <button class="btn" id="loginBtn" type="submit">Sign in</button>
+  </form>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <select id="eventSel" aria-label="Event"></select>
+    <button id="signOut">Sign out</button>
+  </header>
+  <main>
+    <section id="v-scan" class="view">
+      <div class="cam">
+        <video id="video" playsinline muted></video>
+        <div class="frame"></div>
+        <div class="cammsg" id="camMsg">Starting camera…</div>
+      </div>
+      <div class="tally"><b id="scanArrived">0</b><span id="scanOf">arrived</span></div>
+      <p class="hint">Point the camera at the guest's QR code. If it will not scan, find the guest in the Guests tab and check them in by hand.</p>
+    </section>
+
+    <section id="v-guests" class="view hidden">
+      <div class="tools">
+        <input id="search" type="search" placeholder="Search guest name" aria-label="Search guests">
+        <button class="btn" id="addBtn">Add guests</button>
+      </div>
+      <div class="chips" id="chips">
+        <button data-f="all" class="on">All</button>
+        <button data-f="wait">Waiting</button>
+        <button data-f="in">Arrived</button>
+      </div>
+      <div id="list"></div>
+    </section>
+
+    <section id="v-count" class="view hidden">
+      <div class="big"><b id="cArrived">0</b><span id="cOf">of 0 guests have arrived</span></div>
+      <div class="track"><i id="cBar" style="width:0"></i></div>
+      <h2>By seating color</h2>
+      <div id="bySeat"></div>
+      <h2>By meal</h2>
+      <div id="byMeal"></div>
+      <h2>Latest arrivals</h2>
+      <div id="recent"></div>
+    </section>
+  </main>
+  <nav id="tabs">
+    <button data-t="scan" class="on">Scan</button>
+    <button data-t="guests">Guests</button>
+    <button data-t="count">Count</button>
+  </nav>
+</div>
+
+<div id="result" class="result hidden"></div>
+<div id="sheet" class="sheet hidden"><div class="sheetbody" id="sheetBody"></div></div>
+<div id="toast" class="hidden"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+/* ---------- settings ---------- */
+const BASE = 'https://ilvepgeyruwncfjandte.supabase.co';
+const KEY  = 'sb_publishable_-gJ38c6qQb62qGBKFBzG3A_c9WmpCvk';
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const timeOf = iso => iso ? new Date(iso).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}) : '';
+
+let session = null, guests = [], eventName = store.get('event') || '';
+let tab = 'scan', filter = 'all', query = '';
+
+function toast(msg){
+  const t = $('#toast'); t.textContent = msg; t.classList.remove('hidden');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.add('hidden'), 3200);
+}
+
+/* ---------- colors ---------- */
+const MEAL_PALETTE = ['#E07A1F','#2A9D8F','#7B5EA7','#C2185B','#5C7A29','#3A7CA5','#B08900','#6D4C41'];
+function cssColor(v){
+  const t = (v || '').trim();
+  if(!t) return null;
+  if(CSS.supports('color', t)) return t;
+  const n = t.replace(/\s+/g, '');
+  return CSS.supports('color', n) ? n : null;
+}
+function seatColor(v){ return cssColor(v) || '#8A94A0'; }
+function mealColor(v){
+  let h = 0; for(const ch of (v || '').toLowerCase()) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return MEAL_PALETTE[h % MEAL_PALETTE.length];
+}
+function onColor(c){
+  const el = document.createElement('div'); el.style.color = c; document.body.appendChild(el);
+  const m = getComputedStyle(el).color.match(/[\d.]+/g); el.remove();
+  const [r,g,b] = m.slice(0,3).map(Number);
+  return (r*299 + g*587 + b*114) / 1000 > 150 ? '#17212B' : '#FFFFFF';
+}
+
+/* ---------- api ---------- */
+async function authCall(grant, body){
+  const r = await fetch(`${BASE}/auth/v1/token?grant_type=${grant}`, {
+    method:'POST', headers:{apikey:KEY, 'Content-Type':'application/json'}, body:JSON.stringify(body)
+  });
+  const j = await r.json();
+  if(!r.ok) throw new Error(j.error_description || j.msg || 'Sign-in failed');
+  session = {access_token:j.access_token, refresh_token:j.refresh_token};
+  store.set('session', JSON.stringify(session));
+}
+async function api(path, opts = {}, retry = true){
+  const headers = {apikey:KEY, 'Content-Type':'application/json', ...(opts.headers || {})};
+  if(session) headers.Authorization = 'Bearer ' + session.access_token;
+  const r = await fetch(`${BASE}/rest/v1/${path}`, {...opts, headers});
+  if(r.status === 401 && retry && session){
+    try{ await authCall('refresh_token', {refresh_token:session.refresh_token}); }
+    catch(e){ signOut(); throw new Error('Session ended. Sign in again.'); }
+    return api(path, opts, false);
+  }
+  if(!r.ok) throw new Error((await r.text()).slice(0, 200));
+  const t = await r.text();
+  return t ? JSON.parse(t) : null;
+}
+async function fetchAll(path){
+  let all = [], from = 0; const step = 1000;
+  for(;;){
+    const rows = await api(path, {headers:{'Range-Unit':'items', Range:`${from}-${from + step - 1}`}});
+    all = all.concat(rows);
+    if(rows.length < step) break;
+    from += step;
+  }
+  return all;
+}
+async function loadGuests(){ guests = await fetchAll('guests?select=*&order=name.asc,id.asc'); }
+
+/* ---------- sign in / out ---------- */
+$('#loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = $('#loginBtn'); btn.disabled = true; $('#loginErr').textContent = '';
+  try{
+    await authCall('password', {email:$('#email').value.trim(), password:$('#pw').value});
+    await start();
+  }catch(err){ $('#loginErr').textContent = err.message; }
+  btn.disabled = false;
+});
+function signOut(){
+  stopCam(); session = null; store.del('session');
+  $('#app').classList.add('hidden'); $('#login').classList.remove('hidden');
+}
+$('#signOut').onclick = () => { if(confirm('Sign out of this phone?')) signOut(); };
+
+/* ---------- data helpers ---------- */
+const events = () => [...new Set(guests.map(g => g.event_name))].sort();
+const current = () => guests.filter(g => g.event_name === eventName);
+function mergeGuest(g){
+  const i = guests.findIndex(x => x.id === g.id);
+  if(i >= 0) guests[i] = g; else guests.push(g);
+}
+function renderEvents(){
+  const list = events();
+  if(!list.includes(eventName)) eventName = list[0] || '';
+  store.set('event', eventName);
+  $('#eventSel').innerHTML = list.length
+    ? list.map(n => `<option ${n === eventName ? 'selected' : ''}>${esc(n)}</option>`).join('')
+    : '<option>No events yet</option>';
+}
+$('#eventSel').onchange = e => { eventName = e.target.value; store.set('event', eventName); renderAll(); };
+
+function renderAll(){ renderScanTally(); renderGuests(); renderCount(); }
+
+function renderScanTally(){
+  const l = current();
+  $('#scanArrived').textContent = l.filter(g => g.arrived).length;
+  $('#scanOf').textContent = `of ${l.length} arrived`;
+}
+
+/* ---------- tabs ---------- */
+function show(t){
+  tab = t;
+  ['scan','guests','count'].forEach(n => $('#v-' + n).classList.toggle('hidden', n !== t));
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  if(t === 'scan') startCam(); else stopCam();
+  $('main').scrollTop = 0;
+}
+$('#tabs').onclick = e => { const b = e.target.closest('button'); if(b) show(b.dataset.t); };
+
+/* ---------- camera + scanning ---------- */
+let stream = null, scanning = false, busy = false, lastCode = '', lastAt = 0, lastTick = 0, dismissTimer = null;
+const cv = document.createElement('canvas');
+const cx = cv.getContext('2d', {willReadFrequently:true});
+
+async function startCam(){
+  if(stream) return;
+  const msg = $('#camMsg'); msg.textContent = 'Starting camera…'; msg.classList.remove('hidden');
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}, width:{ideal:1280}}, audio:false});
+    const v = $('#video'); v.srcObject = stream; await v.play();
+    msg.classList.add('hidden'); scanning = true; requestAnimationFrame(loop);
+  }catch(e){
+    stream = null;
+    msg.textContent = 'The camera is blocked. Allow camera access for this app in your phone settings, then reopen it.';
+  }
+}
+function stopCam(){
+  scanning = false;
+  if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+}
+function loop(ts){
+  if(!scanning) return;
+  requestAnimationFrame(loop);
+  if(busy || ts - lastTick < 120) return;
+  lastTick = ts;
+  const v = $('#video'); if(!v.videoWidth || !window.jsQR) return;
+  const s = Math.min(1, 640 / v.videoWidth);
+  cv.width = Math.round(v.videoWidth * s); cv.height = Math.round(v.videoHeight * s);
+  cx.drawImage(v, 0, 0, cv.width, cv.height);
+  const img = cx.getImageData(0, 0, cv.width, cv.height);
+  const code = jsQR(img.data, img.width, img.height, {inversionAttempts:'dontInvert'});
+  if(code && code.data) handleCode(code.data.trim());
+}
+
+async function handleCode(raw){
+  const now = Date.now();
+  if(raw === lastCode && now - lastAt < 4000) return;
+  lastCode = raw; lastAt = now; busy = true;
+  try{
+    if(!UUID.test(raw)) return showResult('bad', {title:'Not a valid invitation'});
+    let rows = await api('guests?select=*&id=eq.' + raw);
+    if(!rows.length) return showResult('bad', {title:'Not on the guest list'});
+    let g = rows[0];
+    if(eventName && g.event_name !== eventName) return showResult('bad', {title:'Different event', sub:g.event_name, g});
+    if(g.arrived){ mergeGuest(g); return showResult('dup', {g}); }
+    const upd = await api(`guests?id=eq.${g.id}&arrived=eq.false`, {
+      method:'PATCH', headers:{Prefer:'return=representation'},
+      body:JSON.stringify({arrived:true, arrived_at:new Date().toISOString()})
+    });
+    if(!upd.length){
+      rows = await api('guests?select=*&id=eq.' + g.id); g = rows[0]; mergeGuest(g);
+      return showResult('dup', {g});
+    }
+    g = upd[0]; mergeGuest(g); renderAll();
+    showResult('ok', {g});
+  }catch(e){
+    showResult('bad', {title:'Could not check in', sub:e.message});
+  }
+}
+
+function showResult(kind, d){
+  const el = $('#result'); clearTimeout(dismissTimer);
+  el.className = 'result'; el.style.background = ''; el.style.color = '';
+  const g = d.g;
+  if(kind === 'ok'){
+    const bg = seatColor(g.seat_color), fg = onColor(bg);
+    el.style.background = bg; el.style.color = fg;
+    el.innerHTML = `<div class="kicker">Checked in</div><div class="who">${esc(g.name)}</div>
+      <div class="seat">${esc(g.seat_color || 'No seat color')}</div>
+      ${g.meal_choice ? `<div class="meal">${esc(g.meal_choice)}</div>` : ''}
+      <div class="next">Tap to scan the next guest</div>`;
+    dismissTimer = setTimeout(dismissResult, 3500);
+  }else if(kind === 'dup'){
+    el.classList.add('dup');
+    el.innerHTML = `<div class="kicker">Already checked in at ${esc(timeOf(g.arrived_at))}</div><div class="who">${esc(g.name)}</div>
+      <div class="seat">${esc(g.seat_color || '')}</div>
+      ${g.meal_choice ? `<div class="meal">${esc(g.meal_choice)}</div>` : ''}
+      <div class="next">Tap to scan the next guest</div>`;
+  }else{
+    el.classList.add('dark');
+    el.innerHTML = `<div class="kicker">${esc(d.sub || 'Check the invitation')}</div><div class="who">${esc(d.title)}</div>
+      <div class="next">Tap to scan again</div>`;
+  }
+  el.onclick = dismissResult;
+}
+function dismissResult(){
+  clearTimeout(dismissTimer);
+  $('#result').classList.add('hidden'); busy = false;
+}
+
+/* ---------- guests tab ---------- */
+$('#search').oninput = e => { query = e.target.value.trim().toLowerCase(); renderGuests(); };
+$('#chips').onclick = e => {
+  const b = e.target.closest('button'); if(!b) return;
+  filter = b.dataset.f;
+  document.querySelectorAll('#chips button').forEach(x => x.classList.toggle('on', x === b));
+  renderGuests();
+};
+function renderGuests(){
+  let l = current();
+  if(filter === 'wait') l = l.filter(g => !g.arrived);
+  if(filter === 'in') l = l.filter(g => g.arrived);
+  if(query) l = l.filter(g => g.name.toLowerCase().includes(query));
+  const total = l.length, cap = 400;
+  $('#list').innerHTML = !total
+    ? '<div class="empty">No guests here yet. Tap Add guests to start.</div>'
+    : l.slice(0, cap).map(g => `
+      <button class="row" data-id="${g.id}">
+        <i class="sw" style="background:${seatColor(g.seat_color)}"></i>
+        <span class="who"><b>${esc(g.name)}</b><small>${esc([g.seat_color, g.meal_choice].filter(Boolean).join(' · '))}</small></span>
+        <span class="st ${g.arrived ? '' : 'wait'}">${g.arrived ? '✓ ' + esc(timeOf(g.arrived_at)) : 'Waiting'}</span>
+      </button>`).join('') + (total > cap ? `<div class="empty">Showing the first ${cap} of ${total}. Search to narrow it down.</div>` : '');
+}
+$('#list').onclick = e => { const r = e.target.closest('.row'); if(r) openGuest(r.dataset.id); };
+
+/* ---------- QR drawing ---------- */
+function qrCanvas(text, size){
+  const q = qrcode(0, 'M'); q.addData(text); q.make();
+  const n = q.getModuleCount(), scale = Math.max(2, Math.floor(size / (n + 8)));
+  const c = document.createElement('canvas'); c.width = c.height = (n + 8) * scale;
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.fillStyle = '#000';
+  for(let r = 0; r < n; r++) for(let k = 0; k < n; k++) if(q.isDark(r, k)) x.fillRect((k + 4) * scale, (r + 4) * scale, scale, scale);
+  return c;
+}
+function cardCanvas(g){
+  const W = 800, H = 1060, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+  const bg = seatColor(g.seat_color), fg = onColor(bg);
+  x.fillStyle = bg; x.fillRect(0, 0, W, 150);
+  x.fillStyle = fg; x.font = '800 56px "Avenir Next",Avenir,sans-serif'; x.textBaseline = 'middle';
+  x.fillText(g.seat_color || 'Guest', 48, 78);
+  x.fillStyle = '#17212B'; x.textBaseline = 'alphabetic';
+  x.font = '800 60px "Avenir Next",Avenir,sans-serif';
+  let name = g.name; while(x.measureText(name).width > W - 96 && name.length > 3) name = name.slice(0, -2);
+  x.fillText(name === g.name ? name : name + '…', 48, 260);
+  x.fillStyle = '#5A6572'; x.font = '600 34px "Avenir Next",Avenir,sans-serif';
+  x.fillText(g.event_name, 48, 316);
+  if(g.meal_choice) x.fillText('Meal: ' + g.meal_choice, 48, 364);
+  const q = qrCanvas(g.id, 640); x.drawImage(q, (W - 640) / 2, 400, 640, 640);
+  return c;
+}
+
+/* ---------- guest sheet ---------- */
+function openSheet(html){ $('#sheetBody').innerHTML = html; $('#sheet').classList.remove('hidden'); }
+function closeSheet(){ $('#sheet').classList.add('hidden'); }
+$('#sheet').onclick = e => { if(e.target.id === 'sheet') closeSheet(); };
+
+function openGuest(id){
+  const g = guests.find(x => x.id === id); if(!g) return;
+  openSheet(`
+    <h3>${esc(g.name)}</h3>
+    <p class="meta">${esc(g.event_name)}${g.meal_choice ? ' · ' + esc(g.meal_choice) : ''}</p>
+    <div class="band" style="background:${seatColor(g.seat_color)}"></div>
+    <p class="meta">${g.seat_color ? 'Seating color: ' + esc(g.seat_color) : 'No seating color set'}${g.arrived ? ' · Arrived at ' + esc(timeOf(g.arrived_at)) : ' · Not arrived yet'}</p>
+    <div class="qrwrap" id="qrbox"></div>
+    <div class="stack">
+      <button class="btn" id="shareBtn">Share invitation card</button>
+      <button class="btn alt" id="toggleBtn">${g.arrived ? 'Undo check-in' : 'Check in by hand'}</button>
+      <button class="btn danger" id="delBtn">Delete guest</button>
+      <button class="btn alt" id="closeBtn">Close</button>
+    </div>`);
+  const qr = qrCanvas(g.id, 460); qr.style.width = '260px'; $('#qrbox').appendChild(qr);
+  $('#closeBtn').onclick = closeSheet;
+  $('#shareBtn').onclick = () => shareCard(g);
+  $('#toggleBtn').onclick = async () => {
+    try{
+      const rows = await api('guests?id=eq.' + g.id, {
+        method:'PATCH', headers:{Prefer:'return=representation'},
+        body:JSON.stringify(g.arrived ? {arrived:false, arrived_at:null} : {arrived:true, arrived_at:new Date().toISOString()})
+      });
+      if(rows[0]) mergeGuest(rows[0]);
+      renderAll(); closeSheet(); toast(g.arrived ? 'Check-in undone' : 'Checked in');
+    }catch(e){ toast(e.message); }
+  };
+  $('#delBtn').onclick = async () => {
+    if(!confirm('Delete ' + g.name + '? Their QR code will stop working.')) return;
+    try{
+      await api('guests?id=eq.' + g.id, {method:'DELETE'});
+      guests = guests.filter(x => x.id !== g.id); renderEvents(); renderAll(); closeSheet(); toast('Guest deleted');
+    }catch(e){ toast(e.message); }
+  };
+}
+function shareCard(g){
+  const c = cardCanvas(g);
+  c.toBlob(async blob => {
+    const file = new File([blob], g.name.replace(/[^\w]+/g, '_') + '.png', {type:'image/png'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file], title:'Invitation for ' + g.name}); }catch(e){}
+    }else{
+      const img = new Image(); img.src = c.toDataURL('image/png'); img.style.width = '100%';
+      $('#qrbox').innerHTML = ''; $('#qrbox').appendChild(img);
+      toast('Press and hold the card to save it');
+    }
+  }, 'image/png');
+}
+
+/* ---------- add guests ---------- */
+$('#addBtn').onclick = () => {
+  openSheet(`
+    <h3>Add guests</h3>
+    <label for="evIn">Event name</label>
+    <input id="evIn" list="evList" value="${esc(eventName)}" placeholder="e.g. Aisha and Musa Wedding">
+    <datalist id="evList">${events().map(n => `<option value="${esc(n)}">`).join('')}</datalist>
+    <label for="gIn">One guest per line: name, seating color, meal</label>
+    <textarea id="gIn" rows="8" placeholder="Aisha Bello, Red, Jollof Rice&#10;Musa Danjuma, Blue, Fried Rice"></textarea>
+    <div class="err" id="addErr"></div>
+    <div class="stack">
+      <button class="btn" id="saveG">Save guests</button>
+      <button class="btn alt" id="cancelG">Cancel</button>
+    </div>`);
+  $('#cancelG').onclick = closeSheet;
+  $('#saveG').onclick = async () => {
+    const ev = $('#evIn').value.trim();
+    const rows = $('#gIn').value.split('\n').map(l => l.split(/[,\t]/).map(s => s.trim()))
+      .filter(p => p[0]).map(p => ({event_name:ev, name:p[0], seat_color:p[1] || null, meal_choice:p[2] || null}));
+    if(!ev) return $('#addErr').textContent = 'Enter an event name.';
+    if(!rows.length) return $('#addErr').textContent = 'Add at least one guest.';
+    const btn = $('#saveG'); btn.disabled = true; btn.textContent = 'Saving…';
+    try{
+      for(let i = 0; i < rows.length; i += 400)
+        await api('guests', {method:'POST', headers:{Prefer:'return=minimal'}, body:JSON.stringify(rows.slice(i, i + 400))});
+      await loadGuests(); eventName = ev; renderEvents(); renderAll(); closeSheet(); toast(rows.length + ' guests added');
+    }catch(e){ $('#addErr').textContent = e.message; btn.disabled = false; btn.textContent = 'Save guests'; }
+  };
+};
+
+/* ---------- count tab ---------- */
+function groupRows(list, key, colorFn){
+  const m = new Map();
+  list.forEach(g => {
+    const k = (g[key] || '').trim() || 'Not set', o = m.get(k) || {t:0, a:0};
+    o.t++; if(g.arrived) o.a++; m.set(k, o);
+  });
+  return [...m].sort((a, b) => b[1].t - a[1].t).map(([k, o]) => {
+    const col = colorFn(k === 'Not set' ? '' : k);
+    return `<div class="grp"><i class="sw" style="background:${col}"></i>
+      <div class="nm"><b>${esc(k)}</b><div class="mini"><i style="width:${o.t ? o.a / o.t * 100 : 0}%;background:${col}"></i></div></div>
+      <span class="num">${o.a} / ${o.t}</span></div>`;
+  }).join('') || '<div class="empty">Nothing to show yet.</div>';
+}
+function renderCount(){
+  const l = current(), a = l.filter(g => g.arrived);
+  $('#cArrived').textContent = a.length;
+  $('#cOf').textContent = `of ${l.length} guests have arrived`;
+  $('#cBar').style.width = (l.length ? a.length / l.length * 100 : 0) + '%';
+  $('#bySeat').innerHTML = groupRows(l, 'seat_color', seatColor);
+  $('#byMeal').innerHTML = groupRows(l, 'meal_choice', mealColor);
+  const rec = [...a].sort((x, y) => (y.arrived_at || '').localeCompare(x.arrived_at || '')).slice(0, 10);
+  $('#recent').innerHTML = rec.length
+    ? rec.map(g => `<div class="grp"><i class="sw" style="background:${seatColor(g.seat_color)}"></i>
+        <div class="nm"><b>${esc(g.name)}</b></div><span class="num">${esc(timeOf(g.arrived_at))}</span></div>`).join('')
+    : '<div class="empty">No arrivals yet.</div>';
+}
+
+/* ---------- live updates (other phones scanning) ---------- */
+async function poll(){
+  if(!session || document.hidden || busy || !$('#sheet').classList.contains('hidden')) return;
+  try{
+    const rows = await fetchAll('guests?select=id,arrived,arrived_at&order=id.asc');
+    if(rows.length !== guests.length){ await loadGuests(); renderEvents(); }
+    else{
+      const m = new Map(rows.map(r => [r.id, r]));
+      guests.forEach(g => { const r = m.get(g.id); if(r){ g.arrived = r.arrived; g.arrived_at = r.arrived_at; } });
+    }
+    renderAll();
+  }catch(e){}
+}
+setInterval(poll, 8000);
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden) stopCam(); else { if(session && tab === 'scan') startCam(); poll(); }
+});
+
+/* ---------- start ---------- */
+async function start(){
+  $('#login').classList.add('hidden'); $('#app').classList.remove('hidden');
+  try{ await loadGuests(); }
+  catch(e){ toast(e.message); }
+  renderEvents(); renderAll(); show('scan');
+}
+
+(function icon(){
+  const c = document.createElement('canvas'); c.width = c.height = 180;
+  const x = c.getContext('2d'); x.fillStyle = '#17212B'; x.fillRect(0, 0, 180, 180);
+  ['#D62828','#1D5FD1','#1E9E4A','#F2B705'].forEach((col, i) => { x.fillStyle = col; x.fillRect(22 + i * 34, 40, 26, 100); });
+  $('#touchIcon').href = c.toDataURL('image/png');
+})();
+
+(async function boot(){
+  try{ session = JSON.parse(store.get('session') || 'null'); }catch(e){ session = null; }
+  if(session){
+    try{ await authCall('refresh_token', {refresh_token:session.refresh_token}); await start(); return; }
+    catch(e){ session = null; store.del('session'); }
+  }
+  $('#login').classList.remove('hidden');
+})();
+</script>
+</body>
+</html>
