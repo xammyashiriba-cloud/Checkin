@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guest registration</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+  :root {
+    --ink: #1f1633; --paper: #ffffff; --wash: #efeaf6; --line: #d9d0e8;
+    --muted: #6a5f80; --gold: #b8893b; --err: #b3261e;
+    --purple: #6b3fa0; --blue: #2d6cdf; --green: #2e8b57; --goldband: #c9962b;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --ink: #f2edfa; --paper: #1d1530; --wash: #130d22; --line: #3a2e55; --muted: #a99dc4; --err: #ff8a80; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--wash); color: var(--ink);
+    font: 17px/1.5 Georgia, "Times New Roman", serif;
+    padding: max(20px, env(safe-area-inset-top)) 16px 40px;
+  }
+  main { max-width: 440px; margin: 0 auto; }
+  h1 { font-size: 30px; line-height: 1.15; margin: 8px 0 6px; font-weight: 600; }
+  .sub { color: var(--muted); margin: 0 0 24px; font-family: system-ui, sans-serif; font-size: 15px; }
+  label, legend { display: block; font: 600 14px system-ui, sans-serif; margin: 18px 0 6px; padding: 0; }
+  input[type=text], select {
+    width: 100%; padding: 14px; font: 17px system-ui, sans-serif; color: var(--ink);
+    background: var(--paper); border: 1.5px solid var(--line); border-radius: 8px;
+  }
+  input:focus-visible, select:focus-visible, button:focus-visible, .cat input:focus-visible + span {
+    outline: 3px solid var(--gold); outline-offset: 2px;
+  }
+  fieldset { border: 0; margin: 0; padding: 0; }
+  .cats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .cat { position: relative; margin: 0; }
+  .cat input { position: absolute; opacity: 0; }
+  .cat span {
+    display: flex; align-items: center; gap: 10px; padding: 14px; border-radius: 8px;
+    border: 1.5px solid var(--line); background: var(--paper); font: 600 16px system-ui, sans-serif; cursor: pointer;
+  }
+  .cat span::before { content: ""; width: 14px; height: 14px; border-radius: 50%; background: var(--c); flex: none; }
+  .cat input:checked + span { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+  button.primary {
+    width: 100%; margin-top: 26px; padding: 16px; font: 600 17px system-ui, sans-serif;
+    background: var(--ink); color: var(--paper); border: 0; border-radius: 8px; cursor: pointer;
+  }
+  button.primary:disabled { opacity: .5; }
+  button.link { background: none; border: 0; color: var(--muted); font: 15px system-ui, sans-serif; text-decoration: underline; padding: 14px 0; cursor: pointer; }
+  .error { color: var(--err); font: 15px system-ui, sans-serif; margin-top: 14px; min-height: 1.4em; }
+  .hidden { display: none; }
+  .ticket { background: var(--paper); border-radius: 12px; overflow: hidden; border: 1.5px solid var(--line); }
+  .band { height: 64px; background: var(--band); display: flex; align-items: center; justify-content: center;
+    color: #fff; font: 700 20px system-ui, sans-serif; letter-spacing: .02em; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
+  .tbody { padding: 22px 20px 8px; text-align: center; }
+  .tbody .ev { color: var(--muted); font: 15px system-ui, sans-serif; margin: 0; }
+  .tbody .nm { font-size: 28px; line-height: 1.2; margin: 6px 0 4px; font-weight: 600; }
+  .tbody .meal { font: 15px system-ui, sans-serif; color: var(--muted); margin: 0 0 18px; }
+  #qr { display: inline-block; padding: 12px; background: #fff; border-radius: 8px; }
+  .tear { border-top: 2px dashed var(--line); margin: 20px 0 0; padding: 14px 20px 18px; text-align: center;
+    font: 14px system-ui, sans-serif; color: var(--muted); }
+  .code { font: 600 16px ui-monospace, Menlo, monospace; color: var(--ink); letter-spacing: .06em; }
+</style>
+</head>
+<body>
+<main>
+
+  <script>
+    const SUPABASE_URL = "https://ilvepgeyruwncfjandte.supabase.co/rest/v1/";
+    const SUPABASE_ANON_KEY = "sb_publishable_-gJ38c6qQb62qGBKFBzG3A_c9WmpCvk";
+    const MEALS = ["Jollof rice", "Fried rice", "Swallow and soup", "Vegetarian"];
+  </script>
+
+  <section id="formView">
+    <h1>Register for the event</h1>
+    <p class="sub">Fill in your details to get your entry pass. Bring it on your phone.</p>
+
+    <form id="regForm" novalidate onsubmit="return false">
+      <label for="code">Event code from your invitation</label>
+      <input type="text" id="code" autocomplete="off" autocapitalize="characters" spellcheck="false">
+
+      <label for="name">Full name</label>
+      <input type="text" id="name" autocomplete="name">
+
+      <fieldset>
+        <legend>You are coming as</legend>
+        <div class="cats">
+          <label class="cat"><input type="radio" name="cat" value="family"><span style="--c:var(--purple)">Family</span></label>
+          <label class="cat"><input type="radio" name="cat" value="friends"><span style="--c:var(--blue)">Friends</span></label>
+          <label class="cat"><input type="radio" name="cat" value="vip"><span style="--c:var(--goldband)">VIP</span></label>
+          <label class="cat"><input type="radio" name="cat" value="regular"><span style="--c:var(--green)">Regular guest</span></label>
+        </div>
+      </fieldset>
+
+      <label for="meal">Meal choice</label>
+      <select id="meal"></select>
+
+      <div class="error" id="err" role="alert"></div>
+      <button class="primary" id="go" type="submit">Get my entry pass</button>
+    </form>
+  </section>
+
+  <section id="ticketView" class="hidden">
+    <h1>You are registered</h1>
+    <p class="sub">Show this pass at the door. Take a screenshot so you have it offline.</p>
+    <div class="ticket" id="ticket">
+      <div class="band" id="band"></div>
+      <div class="tbody">
+        <p class="ev" id="tEvent"></p>
+        <p class="nm" id="tName"></p>
+        <p class="meal" id="tMeal"></p>
+        <div id="qr"></div>
+      </div>
+      <div class="tear">Pass code<br><span class="code" id="tCode"></span></div>
+    </div>
+    <button class="link" id="another">Register another guest</button>
+  </section>
+
+</main>
+
+<script>
+  const COLORS = { purple: "#6b3fa0", blue: "#2d6cdf", gold: "#c9962b", green: "#2e8b57" };
+  const LABELS = { purple: "Purple section", blue: "Blue section", gold: "Gold section", green: "Green section" };
+  const STORE = "myTicket";
+  const $ = (id) => document.getElementById(id);
+
+  $("meal").innerHTML = '<option value="">Choose a meal</option>' +
+    MEALS.map((m) => `<option>${m}</option>`).join("");
+
+  const urlCode = new URLSearchParams(location.search).get("code");
+  if (urlCode) $("code").value = urlCode;
+
+  function showTicket(t) {
+    $("formView").classList.add("hidden");
+    $("ticketView").classList.remove("hidden");
+    const hex = COLORS[t.seat_color] || "#444";
+    $("ticket").style.setProperty("--band", hex);
+    $("band").textContent = LABELS[t.seat_color] || t.seat_color;
+    $("tEvent").textContent = t.event_name;
+    $("tName").textContent = t.guest_name;
+    $("tMeal").textContent = t.meal_choice || "";
+    $("tCode").textContent = t.ticket_code;
+    $("qr").innerHTML = "";
+    new QRCode($("qr"), { text: t.ticket_code, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
+    window.scrollTo(0, 0);
+  }
+
+  const ERRORS = {
+    invalid_code: "That event code is not right. Check your invitation and try again.",
+    invalid_name: "Enter your full name (2 to 80 characters).",
+    invalid_category: "Choose how you are coming."
+  };
+
+  $("regForm").addEventListener("submit", async () => {
+    const code = $("code").value.trim();
+    const name = $("name").value.trim();
+    const cat = (document.querySelector('input[name=cat]:checked') || {}).value;
+    const meal = $("meal").value;
+    $("err").textContent = "";
+
+    if (!code) return ($("err").textContent = "Enter the event code from your invitation.");
+    if (name.length < 2) return ($("err").textContent = ERRORS.invalid_name);
+    if (!cat) return ($("err").textContent = ERRORS.invalid_category);
+    if (!meal) return ($("err").textContent = "Choose a meal.");
+
+    $("go").disabled = true; $("go").textContent = "Registering...";
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/register_guest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+        body: JSON.stringify({ p_code: code, p_name: name, p_category: cat, p_meal: meal })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        const key = Object.keys(ERRORS).find((k) => (data.message || "").includes(k));
+        throw new Error(key ? ERRORS[key] : "Could not register. Check your connection and try again.");
+      }
+      localStorage.setItem(STORE, JSON.stringify(data));
+      showTicket(data);
+    } catch (e) {
+      $("err").textContent = e.message;
+    } finally {
+      $("go").disabled = false; $("go").textContent = "Get my entry pass";
+    }
+  });
+
+  $("another").addEventListener("click", () => {
+    localStorage.removeItem(STORE);
+    $("name").value = ""; $("meal").value = "";
+    document.querySelectorAll('input[name=cat]').forEach((r) => (r.checked = false));
+    $("ticketView").classList.add("hidden");
+    $("formView").classList.remove("hidden");
+  });
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORE) || "null");
+    if (saved && saved.ticket_code) showTicket(saved);
+  } catch (e) {}
+</script>
+</body>
+</html>
