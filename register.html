@@ -173,7 +173,7 @@
       const data = await res.json();
       if (!res.ok) {
         const key = Object.keys(ERRORS).find((k) => (data.message || "").includes(k));
-        throw new Error(key ? ERRORS[key] : "Could not register. Check your connection and try again.");
+        throw new Error(key ? ERRORS[key] : "Error: " + (data.message || data.hint || JSON.stringify(data)));
       }
       localStorage.setItem(STORE, JSON.stringify(data));
       showTicket(data);
