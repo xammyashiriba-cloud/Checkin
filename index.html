@@ -348,8 +348,9 @@ async function handleCode(raw){
   if(raw === lastCode && now - lastAt < 4000) return;
   lastCode = raw; lastAt = now; busy = true;
   try{
-    if(!UUID.test(raw)) return showResult('bad', {title:'Not a valid invitation'});
-    let rows = await api('guests?select=*&id=eq.' + raw);
+    const isTicket = /^[0-9a-f]{12}$/i.test(raw);
+if(!UUID.test(raw) && !isTicket) return showResult('bad', {title:'Not a valid invitation'});
+let rows = await api('guests?select=*&' + (isTicket ? 'ticket_code=eq.' + raw.toLowerCase() : 'id=eq.' + raw));
     if(!rows.length) return showResult('bad', {title:'Not on the guest list'});
     let g = rows[0];
     if(eventName && g.event_name !== eventName) return showResult('bad', {title:'Different event', sub:g.event_name, g});
